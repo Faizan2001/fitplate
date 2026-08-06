@@ -15,7 +15,7 @@ export function BudgetMeter({ eaten, target }: Props) {
       aria-label={`${Math.round(ratio * 100)}% of the daily calorie budget used`}
     >
       {Array.from({ length: SEGMENTS }, (_, index) => {
-        const state = index < filled ? (over ? 'over' : 'filled') : 'empty'
+        const state = index < filled ? (over && index === SEGMENTS - 1 ? 'over' : 'filled') : 'empty'
         return (
           <span
             key={index}

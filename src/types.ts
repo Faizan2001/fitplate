@@ -39,6 +39,20 @@ export type Profile = {
   activity?: number
 }
 
-export type LogEntry = { id: string; loggedAt: number }
+export type LogEntry = {
+  entryId: string
+  foodId: string
+  loggedAt: number
+}
+
+export type DailyLog = {
+  date: string
+  entries: LogEntry[]
+}
+
+export type LoggedFood = {
+  entry: LogEntry
+  food: Food
+}
 
 export type Screen = 'profile' | 'today' | 'suggestions'

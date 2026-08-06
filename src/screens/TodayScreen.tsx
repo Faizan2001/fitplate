@@ -2,24 +2,24 @@ import { useMemo, useState } from 'react'
 import { BudgetMeter } from '../components/BudgetMeter'
 import { ArrowIcon, CloseIcon, PlusIcon, SearchIcon } from '../components/Icons'
 import { formatNumber, totals } from '../lib/nutrition'
-import { ALLERGEN_LABELS, type Food, type Profile } from '../types'
+import { ALLERGEN_LABELS, type Food, type LoggedFood, type Profile } from '../types'
 
 type Props = {
   profile: Profile
-  loggedFoods: Food[]
+  loggedItems: LoggedFood[]
   candidates: Food[]
   onLog: (foods: Food[]) => void
-  onRemove: (index: number) => void
+  onRemove: (entryId: string) => void
   onReset: () => void
   onFindFood: () => void
 }
 
-export function TodayScreen({ profile, loggedFoods, candidates, onLog, onRemove, onReset, onFindFood }: Props) {
+export function TodayScreen({ profile, loggedItems, candidates, onLog, onRemove, onReset, onFindFood }: Props) {
   const [query, setQuery] = useState('')
+  const loggedFoods = loggedItems.map(item => item.food)
   const eaten = totals(loggedFoods)
   const remaining = (profile.calories || 0) - eaten.calories
   const overBudget = remaining < 0
-  const macroTotal = Math.max(1, eaten.protein + eaten.carbs + eaten.fat)
 
   const results = useMemo(() => {
     const term = query.trim().toLowerCase()
@@ -69,45 +69,23 @@ export function TodayScreen({ profile, loggedFoods, candidates, onLog, onRemove,
         </div>
         <div className="stat">
           <span>Items logged</span>
-          <strong>{loggedFoods.length}</strong>
+          <strong>{loggedItems.length}</strong>
           <small className="stat-note">
-            {profile.allergies.length ? `${profile.allergies.length} allergen filter` : 'no filters'}
+            {profile.allergies.length
+              ? `${profile.allergies.length} allergen ${profile.allergies.length === 1 ? 'filter' : 'filters'}`
+              : 'no filters'}
           </small>
         </div>
       </div>
 
-      {loggedFoods.length > 0 && (
-        <div className="macro-bar" aria-hidden="true">
-          <span className="protein" style={{ flexGrow: eaten.protein / macroTotal }} />
-          <span className="carbs" style={{ flexGrow: eaten.carbs / macroTotal }} />
-          <span className="fat" style={{ flexGrow: eaten.fat / macroTotal }} />
-        </div>
-      )}
-      {loggedFoods.length > 0 && (
-        <div className="macro-legend">
-          <span>
-            <i className="protein" />
-            Protein {formatNumber(eaten.protein)}g
-          </span>
-          <span>
-            <i className="carbs" />
-            Carbs {formatNumber(eaten.carbs)}g
-          </span>
-          <span>
-            <i className="fat" />
-            Fat {formatNumber(eaten.fat)}g
-          </span>
-        </div>
-      )}
-
-      <div className="section">
+      <section className="section" aria-labelledby="logged-heading">
         <div className="section-head">
-          <h3>Logged today</h3>
-          <button type="button" className="quiet-button" onClick={onReset} disabled={!loggedFoods.length}>
+          <h3 id="logged-heading">Logged today</h3>
+          <button type="button" className="quiet-button" onClick={onReset} disabled={!loggedItems.length}>
             Reset day
           </button>
         </div>
-        {loggedFoods.length === 0 ? (
+        {loggedItems.length === 0 ? (
           <div className="empty">
             <p>Nothing logged yet.</p>
             <button type="button" className="link-button" onClick={onFindFood}>
@@ -116,21 +94,21 @@ export function TodayScreen({ profile, loggedFoods, candidates, onLog, onRemove,
             </button>
           </div>
         ) : (
-          <ul className="logged-list">
-            {loggedFoods.map((food, index) => (
-              <li key={`${food.id}-${index}`}>
+          <ul className="logged-list" aria-label="Foods logged today">
+            {loggedItems.map(({ entry, food }) => (
+              <li key={entry.entryId}>
                 <div>
                   <strong>{food.name}</strong>
                   <span>
                     {food.serving} · {food.protein}g protein
                   </span>
                 </div>
-                <b>{food.calories} kcal</b>
+                <b aria-label={`${food.calories} calories`}>{food.calories} kcal</b>
                 <button
                   type="button"
                   className="icon-button"
                   aria-label={`Remove ${food.name}`}
-                  onClick={() => onRemove(index)}
+                  onClick={() => onRemove(entry.entryId)}
                 >
                   <CloseIcon />
                 </button>
@@ -138,17 +116,18 @@ export function TodayScreen({ profile, loggedFoods, candidates, onLog, onRemove,
             ))}
           </ul>
         )}
-      </div>
+      </section>
 
-      <div className="section search-section">
+      <section className="section search-section" aria-labelledby="quick-log-heading">
         <div className="section-head">
-          <h3>Quick log</h3>
+          <h3 id="quick-log-heading">Quick log</h3>
         </div>
         <div className="search-field">
           <SearchIcon />
           <input
             id="food-search"
             type="search"
+            aria-label="Search foods to log"
             value={query}
             placeholder="Search a food to log"
             onChange={event => setQuery(event.target.value)}
@@ -160,7 +139,7 @@ export function TodayScreen({ profile, loggedFoods, candidates, onLog, onRemove,
           )}
         </div>
         {query.trim() && (
-          <div className="search-results">
+          <div className="search-results" aria-live="polite">
             {results.length ? (
               results.map(food => (
                 <button
@@ -191,7 +170,7 @@ export function TodayScreen({ profile, loggedFoods, candidates, onLog, onRemove,
             )}
           </div>
         )}
-      </div>
+      </section>
     </section>
   )
 }

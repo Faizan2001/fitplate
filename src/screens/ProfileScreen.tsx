@@ -9,12 +9,15 @@ type Props = {
   onContinue: () => void
 }
 
-const numberValue = (raw: string) => (raw === '' ? undefined : Math.max(0, Number(raw)))
+const numberValue = (raw: string) => {
+  const value = Number(raw)
+  return raw !== '' && Number.isFinite(value) && value > 0 ? value : undefined
+}
 
 export function ProfileScreen({ profile, update, onContinue }: Props) {
   const bmi = calculateBmi(profile.weight, profile.height)
   const suggestion = suggestedCalories(profile)
-  const ready = Boolean(profile.calories && profile.weight && profile.height)
+  const ready = profile.calories > 0 && profile.calories <= 10000 && profile.weight > 0 && profile.weight <= 500 && profile.height > 0 && profile.height <= 300
 
   const toggleAllergy = (allergen: Allergen) =>
     update({
@@ -44,6 +47,9 @@ export function ProfileScreen({ profile, update, onContinue }: Props) {
             id="target-calories"
             type="number"
             min="1"
+            max="10000"
+            required
+            aria-invalid={!profile.calories || profile.calories > 10000}
             inputMode="numeric"
             value={profile.calories || ''}
             onChange={event => update({ calories: numberValue(event.target.value) ?? 0 })}
@@ -65,7 +71,8 @@ export function ProfileScreen({ profile, update, onContinue }: Props) {
           <input
             id="target-protein"
             type="number"
-            min="0"
+            min="1"
+            max="500"
             inputMode="numeric"
             placeholder="Leave blank to skip"
             value={profile.protein ?? ''}
@@ -84,6 +91,9 @@ export function ProfileScreen({ profile, update, onContinue }: Props) {
               id="weight"
               type="number"
               min="1"
+              max="500"
+              required
+              aria-invalid={!profile.weight || profile.weight > 500}
               inputMode="decimal"
               value={profile.weight || ''}
               onChange={event => update({ weight: numberValue(event.target.value) ?? 0 })}
@@ -94,6 +104,9 @@ export function ProfileScreen({ profile, update, onContinue }: Props) {
               id="height"
               type="number"
               min="1"
+              max="300"
+              required
+              aria-invalid={!profile.height || profile.height > 300}
               inputMode="decimal"
               value={profile.height || ''}
               onChange={event => update({ height: numberValue(event.target.value) ?? 0 })}
@@ -113,6 +126,7 @@ export function ProfileScreen({ profile, update, onContinue }: Props) {
               id="age"
               type="number"
               min="1"
+              max="130"
               inputMode="numeric"
               placeholder="Optional"
               value={profile.age ?? ''}

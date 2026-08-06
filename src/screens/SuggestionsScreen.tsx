@@ -33,7 +33,7 @@ export function SuggestionsScreen({ remaining, proteinGoal, proteinGap, candidat
         </h2>
         <p>
           {remaining > 0
-            ? `Combinations of one to three foods that stay inside your ${formatNumber(remaining)} kcal.`
+            ? `Combinations of one to three foods that fit the ${formatNumber(remaining)} kcal you have left.`
             : 'Your budget is spent for today. Reset the day or raise your target to see ideas.'}
         </p>
       </header>

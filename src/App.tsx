@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { IdeasIcon, LeafIcon, SetupIcon, TodayIcon } from './components/Icons'
 import { allowedFoods, foods, formatNumber, totals } from './lib/nutrition'
-import { PROFILE_KEY, TODAY_KEY, loadState, saveState } from './lib/storage'
+import { PROFILE_KEY, TODAY_KEY, loadProfile, loadTodayLog, localDate, saveState } from './lib/storage'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { SuggestionsScreen } from './screens/SuggestionsScreen'
 import { TodayScreen } from './screens/TodayScreen'
-import type { Food, LogEntry, Profile, Screen } from './types'
+import type { DailyLog, Food, LoggedFood, Profile, Screen } from './types'
 
 const DEFAULT_PROFILE: Profile = { calories: 2000, weight: 70, height: 170, allergies: [] }
 
@@ -16,30 +16,60 @@ const TABS: { id: Screen; label: string; Icon: typeof SetupIcon }[] = [
 ]
 
 export function App() {
-  const [profile, setProfile] = useState<Profile>(() => loadState(PROFILE_KEY, DEFAULT_PROFILE))
-  const [log, setLog] = useState<LogEntry[]>(() => loadState(TODAY_KEY, [] as LogEntry[]))
-  const [screen, setScreen] = useState<Screen>('profile')
+  const [profile, setProfile] = useState<Profile>(() => loadProfile(DEFAULT_PROFILE))
+  const [dailyLog, setDailyLog] = useState<DailyLog>(loadTodayLog)
+  const [screen, setScreen] = useState<Screen>(() => 'profile')
   const [toast, setToast] = useState('')
 
   useEffect(() => saveState(PROFILE_KEY, profile), [profile])
-  useEffect(() => saveState(TODAY_KEY, log), [log])
+  useEffect(() => saveState(TODAY_KEY, dailyLog), [dailyLog])
+  useEffect(() => {
+    const resetIfNewDay = () => {
+      const today = localDate()
+      setDailyLog(current => (current.date === today ? current : { date: today, entries: [] }))
+    }
+    window.addEventListener('focus', resetIfNewDay)
+    document.addEventListener('visibilitychange', resetIfNewDay)
+    return () => {
+      window.removeEventListener('focus', resetIfNewDay)
+      document.removeEventListener('visibilitychange', resetIfNewDay)
+    }
+  }, [])
   useEffect(() => {
     if (!toast) return
     const timer = window.setTimeout(() => setToast(''), 2400)
     return () => window.clearTimeout(timer)
   }, [toast])
 
-  const loggedFoods = useMemo(
-    () => log.map(entry => foods.find(food => food.id === entry.id)).filter((food): food is Food => Boolean(food)),
-    [log],
+  const loggedItems = useMemo(
+    () =>
+      dailyLog.entries
+        .map(entry => {
+          const food = foods.find(item => item.id === entry.foodId)
+          return food ? { entry, food } : undefined
+        })
+        .filter((item): item is LoggedFood => Boolean(item)),
+    [dailyLog.entries],
   )
+  const loggedFoods = loggedItems.map(item => item.food)
   const eaten = totals(loggedFoods)
   const remaining = (profile.calories || 0) - eaten.calories
   const candidates = useMemo(() => allowedFoods(profile.allergies), [profile.allergies])
   const proteinGap = profile.protein ? Math.max(0, profile.protein - eaten.protein) : undefined
 
   const logFoods = (items: Food[]) => {
-    setLog(current => [...current, ...items.map(food => ({ id: food.id, loggedAt: Date.now() }))])
+    const now = Date.now()
+    setDailyLog(current => ({
+      date: localDate(now),
+      entries: [
+        ...(current.date === localDate(now) ? current.entries : []),
+        ...items.map((food, index) => ({
+          entryId: `${now}-${index}-${food.id}`,
+          foodId: food.id,
+          loggedAt: now,
+        })),
+      ],
+    }))
     setToast(items.length > 1 ? `Logged · ${formatNumber(totals(items).calories)} kcal` : 'Logged')
   }
 
@@ -62,7 +92,7 @@ export function App() {
         </span>
       </header>
 
-      <main>
+      <main id="main-content" tabIndex={-1}>
         {screen === 'profile' && (
           <ProfileScreen
             profile={profile}
@@ -73,15 +103,18 @@ export function App() {
         {screen === 'today' && (
           <TodayScreen
             profile={profile}
-            loggedFoods={loggedFoods}
+            loggedItems={loggedItems}
             candidates={candidates}
             onLog={logFoods}
-            onRemove={index => {
-              setLog(current => current.filter((_, position) => position !== index))
+            onRemove={entryId => {
+              setDailyLog(current => ({
+                ...current,
+                entries: current.entries.filter(entry => entry.entryId !== entryId),
+              }))
               setToast('Removed')
             }}
             onReset={() => {
-              setLog([])
+              setDailyLog({ date: localDate(), entries: [] })
               setToast('Day reset')
             }}
             onFindFood={goToSearch}

@@ -59,7 +59,7 @@ export function totals(items: Food[]) {
 
 export function buildSuggestions(items: Food[], remaining: number, proteinGap?: number, limit = 5) {
   if (remaining < 1) return []
-  const floor = remaining * 0.5
+  const floor = Math.min(remaining * 0.5, 400)
   const combos: Food[][] = []
   const consider = (combo: Food[], calories: number) => {
     if (calories <= remaining && calories >= floor) combos.push(combo)
